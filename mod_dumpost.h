@@ -22,6 +22,7 @@
 #define LOG_IS_FULL -1
 #define DEFAULT_MAX_SIZE 1024*1024
 #define min(a,b) (a)<(b)?(a):(b)
+#define max(a,b) (a)>(b)?(a):(b)
 #define CREATEMODE ( APR_UREAD | APR_UWRITE | APR_GREAD )
 
 typedef struct dumpost_cfg_t {

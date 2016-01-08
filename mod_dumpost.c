@@ -62,7 +62,6 @@ apr_status_t logit(ap_filter_t *f) {
     request_rec *r = f->r;
 
     if (state == NULL || state->log_size == 0) return -1;
-    state->buffer[state->log_size] = 0;
 
     if (state->fd == NULL) {
       // no file to write to, write to error log
@@ -139,16 +138,30 @@ apr_status_t dumpost_input_filter (ap_filter_t *f, apr_bucket_brigade *bb,
 
     /* dump header if config */
     if (state->log_size != LOG_IS_FULL && headers!=NULL && !state->header_printed) {
-        int i=0;
-        for (;i<cfg->headers->nelts;i++) {
+        int i;
+        for (i = 0; i < cfg->headers->nelts; ++i) {
             const char *s = apr_table_get(f->r->headers_in, headers[i]);
             if (s == NULL) continue;
-            int len = strlen(s);
-            len = min(len, cfg->max_size - buf_len);
+            // Append header name.
+            int len = strlen(headers[i]);
+            if (buf_len + len + 5 >= cfg->max_size) {
+                // Header name and static text won't even fit, skip whole header.
+                ap_log_rerror(APLOG_MARK, APLOG_WARNING, 0, f->r, "mod_dumpost: skipped header %s, body limit reach", headers[i]);
+                continue;
+            }
+            buf[buf_len++] = '"';
+            strncpy(buf + buf_len, headers[i], len);
+            buf_len += len;
+            buf[buf_len++] = ':';
+            buf[buf_len++] = ' ';
+            // Append header contents (trimmed as necessary).
+            len = strlen(s);
+            len = min(len, cfg->max_size - buf_len - 2);
             strncpy(buf + buf_len, s, len);
-            buf_len += len + 1;
-            buf[buf_len-1] = ' ';
-            if (buf_len == cfg->max_size) break;
+            buf_len += len;
+            buf[buf_len++] = '"';
+            buf[buf_len++] = ' ';
+            // Continue loop even if more headers won't fit to ensure that every skipped header is logged.
         }
         state->header_printed = 1;
     }
@@ -172,6 +185,9 @@ apr_status_t dumpost_input_filter (ap_filter_t *f, apr_bucket_brigade *bb,
             state->log_size = LOG_IS_FULL;
         }
     }
+    
+    // Ensure ending NUL. Take special care of buffer marker.
+    buf[buf_len != LOG_IS_FULL ? buf_len : cfg->max_size] = 0x00;
 
     return APR_SUCCESS;
 }
