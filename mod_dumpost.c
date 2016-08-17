@@ -188,7 +188,7 @@ apr_status_t dumpost_input_filter (ap_filter_t *f, apr_bucket_brigade *bb,
     }
     
     // Ensure ending NUL. Take special care of buffer marker.
-    buf[buf_len != LOG_IS_FULL ? buf_len : cfg->max_size] = 0x00;
+    buf[!state->log_is_full ? buf_len : cfg->max_size] = 0x00;
 
     return APR_SUCCESS;
 }
