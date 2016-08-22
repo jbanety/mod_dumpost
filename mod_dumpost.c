@@ -81,7 +81,7 @@ apr_status_t logit(ap_filter_t *f) {
 #endif
 
       apr_size_t nbytes_written;
-      char *text = apr_psprintf(r->pool, "[%s] %s \"%s\" %s\n",time, ip, r->the_request, state->buffer);
+      char *text = apr_psprintf(r->pool, "[%s] %s \"%s\" %i %s\n",time, ip, r->the_request, r->status, state->buffer);
       apr_status_t rc = apr_file_write_full(state->fd, text, strlen(text), &nbytes_written);
 
       if (rc != APR_SUCCESS) {
